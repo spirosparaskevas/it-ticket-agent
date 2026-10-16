@@ -1,0 +1,15 @@
+# Agent settings. The model choice and all keys live in .env (see .env.example).
+# An environment variable overrides any value here: section, two underscores, key.
+# For example AGENT__MAX_STEPS=8.
+
+[llm]
+# Seconds per model call, before it counts as unavailable.
+timeout_s = 60
+
+[agent]
+# LLM calls per turn before the agent gives up.
+max_steps = 6
+log_level = "INFO"
+
+[ticketing]
+url = "http://localhost:8000"

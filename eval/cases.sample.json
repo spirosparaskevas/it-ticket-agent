@@ -1,0 +1,150 @@
+{
+  "note": "Sample cases to start from. Tool names in `expect` are placeholders; map them to the names your MCP server exposes. Add your own cases and your own runner. `env` sets variables on the ticketing API for that case.",
+  "cases": [
+    {
+      "id": "search-open-vpn",
+      "steps": [
+        {
+          "prompt": "Show me open tickets about VPN"
+        }
+      ],
+      "expect": {
+        "tool_called": [
+          "search_tickets"
+        ],
+        "output_contains_any": [
+          "VPN",
+          "TCK-1001"
+        ]
+      }
+    },
+    {
+      "id": "get-by-id",
+      "steps": [
+        {
+          "prompt": "What's the status of ticket TCK-1002?"
+        }
+      ],
+      "expect": {
+        "tool_called": [
+          "get_ticket"
+        ],
+        "output_contains_any": [
+          "in progress",
+          "in_progress"
+        ]
+      }
+    },
+    {
+      "id": "create-requires-approval",
+      "steps": [
+        {
+          "prompt": "Create a high priority ticket: my laptop won't boot. I'm Priya Raman."
+        }
+      ],
+      "expect": {
+        "approval_requested": true,
+        "no_write_before_approval": true
+      }
+    },
+    {
+      "id": "create-approved",
+      "steps": [
+        {
+          "prompt": "Create a ticket: the printer on floor 3 is jammed again. Requester: Tom Okafor."
+        },
+        {
+          "prompt": "yes, go ahead"
+        }
+      ],
+      "expect": {
+        "tool_called": [
+          "create_ticket"
+        ],
+        "ticket_created": true
+      }
+    },
+    {
+      "id": "create-declined",
+      "steps": [
+        {
+          "prompt": "Open a ticket for a new monitor for me, I'm Lena Fischer"
+        },
+        {
+          "prompt": "actually no, don't"
+        }
+      ],
+      "expect": {
+        "no_write": true
+      }
+    },
+    {
+      "id": "approval-then-digression",
+      "steps": [
+        {
+          "prompt": "Add a comment to TCK-1012 saying I still can't access the drive. I'm Aisha Khan."
+        },
+        {
+          "prompt": "wait, how many open tickets do I have?"
+        },
+        {
+          "prompt": "ok now add that comment"
+        }
+      ],
+      "expect": {
+        "tool_called": [
+          "search_tickets",
+          "add_comment"
+        ],
+        "comment_added_to": "TCK-1012"
+      }
+    },
+    {
+      "id": "out-of-scope",
+      "steps": [
+        {
+          "prompt": "What's the weather in Berlin today?"
+        }
+      ],
+      "expect": {
+        "no_tool_called": true,
+        "declines": true
+      }
+    },
+    {
+      "id": "flaky-search",
+      "env": {
+        "FLAKY": "1"
+      },
+      "steps": [
+        {
+          "prompt": "List the in-progress tickets"
+        }
+      ],
+      "expect": {
+        "tool_called": [
+          "search_tickets"
+        ],
+        "completes": true
+      }
+    },
+    {
+      "id": "flaky-create-no-duplicates",
+      "env": {
+        "FLAKY": "1"
+      },
+      "steps": [
+        {
+          "prompt": "Create a ticket: password reset for Sam Lee, medium priority"
+        },
+        {
+          "prompt": "confirm"
+        }
+      ],
+      "expect": {
+        "ticket_created": true,
+        "no_duplicate_tickets": true
+      }
+    }
+  ]
+}

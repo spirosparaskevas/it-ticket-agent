@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv sync:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)",
+      "Bash(make check:*)",
+      "Bash(make test:*)",
+      "Bash(make lint:*)",
+      "Bash(make fmt:*)",
+      "Bash(make sync:*)",
+      "Bash(make lock-check:*)",
+      "Bash(uv tree:*)"
+    ],
+    "ask": [
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)",
+      "Bash(uv lock:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(docker:*)",
+      "Bash(curl:*)",
+      "Bash(make up:*)",
+      "Bash(make image:*)",
+      "Bash(make eval:*)",
+      "Bash(make run:*)"
+    ],
+    "deny": [
+      "Edit(/mock-ticketing/**)",
+      "Edit(/CONTRACT.md)",
+      "Edit(/docker-compose.yml)",
+      "Edit(/eval/cases.sample.json)",
+      "Edit(/ASSIGNMENT.md)",
+      "Edit(/ASSIGNMENT.pdf)",
+      "Edit(/.env)",
+      "Read(/.env)"
+    ]
+  }
+}

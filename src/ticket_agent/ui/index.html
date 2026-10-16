@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Ticket Agent</title>
+<style>
+  :root { --bg:#f7f7f8; --panel:#fff; --text:#1d1d1f; --muted:#6b6b76; --border:#e2e2e7; --user:#e8f0fe;
+          --ok:#1a7f37; --err:#c62828; --warn:#9a6700; --pend:#fff8e1; --accent:#2457d6; --llm:#7c3aed; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141417; --panel:#1d1d22; --text:#ececf1; --muted:#9a9aa6; --border:#2e2e36; --user:#1f2a44;
+            --ok:#4cc26a; --err:#ff6b6b; --warn:#e3b341; --pend:#2b2615; --accent:#7aa2ff; --llm:#b794f6; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
+  .mono { font-family:ui-monospace, monospace; font-size:12px; }
+  .muted { color:var(--muted); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:5px; vertical-align:middle; }
+  .dot.ok { background:var(--ok); } .dot.err { background:var(--err); }
+  #bar { position:sticky; top:0; z-index:1; display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center;
+         padding:8px 16px; background:var(--panel); border-bottom:1px solid var(--border); font-size:13px; }
+  #bar h1 { font-size:15px; margin:0 8px 0 0; }
+  #bar .item { white-space:nowrap; }
+  #bar .spacer { flex:1; }
+  #wrap { display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:32px; max-width:1440px; margin:0 auto; padding:16px; height:calc(100vh - 45px); }
+  @media (max-width: 860px) { #wrap { grid-template-columns:1fr; height:auto; } #side { order:-1; } }
+  #chat { display:flex; flex-direction:column; min-height:0; }
+  #log { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-bottom:8px; min-height:300px; }
+  form { display:flex; gap:8px; padding-top:8px; }
+  input { flex:1; min-width:0; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel); color:var(--text); font:inherit; }
+  button { padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--panel); color:var(--text); font:inherit; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:disabled { opacity:.5; cursor:default; }
+  .msg { padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel); }
+  .md p { margin:0 0 12px; white-space:pre-wrap; } .md p:last-child { margin-bottom:0; }
+  .md ul, .md ol { margin:4px 0 6px; padding-left:22px; } .md .h { font-weight:600; }
+  .md code { font-family:ui-monospace, monospace; font-size:13px; background:var(--bg); padding:0 4px; border-radius:4px; }
+  .md table { border-collapse:collapse; margin:6px 0; font-size:13px; display:block; overflow-x:auto; }
+  .md th, .md td { border:1px solid var(--border); padding:3px 8px; text-align:left; }
+  .msg.user { background:var(--user); align-self:flex-end; max-width:85%; white-space:pre-wrap; }
+  .msg.error { border-color:var(--err); color:var(--err); }
+  .meta { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--muted); }
+  .meta b { color:var(--llm); font-weight:600; }
+  .calls { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+  .call { border-left:3px solid var(--border); padding:2px 8px; overflow-wrap:anywhere; }
+  .status { font-weight:600; }
+  .s-ok { color:var(--ok); border-color:var(--ok); } .s-retried { color:var(--warn); border-color:var(--warn); }
+  .s-error { color:var(--err); border-color:var(--err); }
+  .s-unknown { color:var(--err); border-color:var(--warn); }
+  .call .rest { color:var(--text); }
+  .approval { margin-top:8px; padding:10px; border-radius:8px; background:var(--pend); border:1px solid var(--warn); }
+  .approval pre { margin:6px 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .approval .decided { margin-top:6px; font-weight:600; }
+  details.trace { margin-top:6px; font-size:12px; }
+  details.trace summary { cursor:pointer; color:var(--muted); }
+  .tl { list-style:none; margin:6px 0 0; padding:0 0 0 10px; border-left:2px solid var(--border); }
+  .tl li { padding:2px 0 2px 8px; overflow-wrap:anywhere; }
+  .tl .k { display:inline-block; min-width:72px; font-weight:600; }
+  .k-llm { color:var(--llm); } .k-tool { color:var(--ok); } .k-approval { color:var(--accent); }
+  #side { display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:13px; }
+  .card summary { cursor:pointer; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .card[open] summary { margin-bottom:8px; }
+  dl { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; margin:0; }
+  dt { color:var(--muted); } dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+  .list { list-style:none; margin:6px 0 0; padding:0; }
+  .list li { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
+  .badge { font-size:11px; padding:0 6px; border-radius:6px; border:1px solid var(--border); }
+  .badge.w { color:var(--accent); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <h1>IT Ticket Agent</h1>
+  <span class="item" title="GET /ping"><span id="health-dot" class="dot"></span><span id="health">checking…</span></span>
+  <span class="item" title="The first model in the chain">model <b id="model" class="mono">…</b></span>
+  <span class="item" title="MCP tool server"><span id="mcp-dot" class="dot"></span>MCP <span id="mcp">…</span></span>
+  <span class="spacer"></span>
+  <span class="item muted mono" id="sid"></span>
+  <button id="reset" type="button">New session</button>
+</div>
+
+<div id="wrap">
+  <section id="chat">
+    <div id="log" aria-live="polite"></div>
+    <form id="form">
+      <input id="prompt" autocomplete="off" placeholder="For example: Show me the open tickets about VPN" required>
+      <button class="primary" id="send">Send</button>
+    </form>
+  </section>
+  <aside id="side">
+    <details class="card" open><summary>This session</summary><dl id="stats"></dl></details>
+    <details class="card" open><summary>Agent</summary><ol class="list mono" id="models"></ol><ul class="list mono" id="tools"></ul></details>
+  </aside>
+</div>
+
+<script>
+// Every string from the server goes in through textContent, never as HTML.
+const $ = (id) => document.getElementById(id);
+const SESSION_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id";
+const fmtMs = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms + " ms");
+const label = (m) => m.provider + "/" + m.model;
+let sessionId, stats;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function dl(target, rows) {
+  target.replaceChildren(...rows.flatMap(([k, v]) => [el("dt", "", k), el("dd", "", String(v))]));
+}
+
+// ---- session and stats ----
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() // missing outside a secure context (0.0.0.0, an IP)
+  : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
+function newSession() {
+  sessionId = uuid() + "-web-ui"; // AgentCore wants 33+ characters
+  $("sid").textContent = "session " + sessionId.slice(0, 8) + "…";
+  $("sid").title = sessionId;
+  $("log").replaceChildren();
+  stats = { turns: 0, failed: 0, ms: 0, llm: 0, retries: 0, tin: 0, tout: 0, tools: {}, approvals: {}, models: new Set() };
+  renderStats();
+}
+
+function account(data, ms) {
+  stats.turns++;
+  stats.ms += ms;
+  stats.tin += data.usage.input_tokens;
+  stats.tout += data.usage.output_tokens;
+  for (const t of data.trace) {
+    if (t.type === "llm") {
+      stats.llm++;
+      stats.retries += t.errors.length;
+      stats.models.add(t.model);
+    }
+    if (t.type === "approval") stats.approvals[t.answer] = (stats.approvals[t.answer] || 0) + 1;
+  }
+  for (const c of data.tool_calls) stats.tools[c.status] = (stats.tools[c.status] || 0) + 1;
+  renderStats();
+}
+
+function renderStats() {
+  const kv = (o) => Object.entries(o).map(([k, v]) => k + " " + v).join(", ") || "—";
+  dl($("stats"), [
+    ["turns", stats.turns + (stats.failed ? " (" + stats.failed + " failed)" : "")],
+    ["avg turn", stats.turns ? fmtMs(Math.round(stats.ms / stats.turns)) : "—"],
+    ["LLM calls", stats.llm],
+    ["LLM retries", stats.retries],
+    ["tokens in / out", stats.tin + " / " + stats.tout],
+    ["models seen", [...stats.models].join(", ") || "—"],
+    ["tool calls", kv(stats.tools)],
+    ["approvals", kv(stats.approvals)],
+  ]);
+}
+
+// ---- status bar and agent card ----
+async function refreshInfo() {
+  try {
+    const ping = await (await fetch("/ping")).json();
+    $("health").textContent = ping.status;
+    $("health-dot").className = "dot ok";
+  } catch {
+    $("health").textContent = "unreachable";
+    $("health-dot").className = "dot err";
+    return;
+  }
+  try {
+    const info = await (await fetch("/info")).json();
+    const first = info.models[0];
+    $("model").textContent = first ? label(first) : "not set";
+    $("mcp-dot").className = "dot ok";
+    $("mcp").textContent = info.tools.length + " tools";
+    $("models").replaceChildren(el("li", "", "model: " + (first ? label(first) : "not set")));
+    $("tools").replaceChildren(...info.tools.map((t) => {
+      const li = el("li", "", t.name);
+      li.append(el("span", "badge" + (t.read_only ? "" : " w"), t.read_only ? "read" : "write · approval"));
+      return li;
+    }));
+  } catch {
+    $("mcp-dot").className = "dot err";
+  }
+}
+
+// ---- one turn: tool calls, approval request, trace ----
+function renderToolCalls(calls) {
+  const box = el("div", "calls mono");
+  for (const c of calls) {
+    const line = el("div", "call s-" + c.status);
+    line.append(el("span", "status", c.status), el("span", "rest", " " + c.name + "(" + JSON.stringify(c.input) + ")"));
+    const extra = [fmtMs(c.duration_ms)];
+    if (c.attempts > 1) extra.unshift(c.attempts + " attempts");
+    if (c.status === "unknown") extra.unshift("may or may not have gone through");
+    if (c.retry_reasons.length) extra.push("retried after " + c.retry_reasons.join(", "));
+    line.append(el("span", "muted", " · " + extra.join(" · ")));
+    if (c.error) line.append(el("div", "", c.error));
+    box.append(line);
+  }
+  return box;
+}
+
+function renderTraceEvent(t) {
+  const li = el("li", "mono");
+  li.append(el("span", "k k-" + t.type, t.type));
+  let text;
+  if (t.type === "llm") {
+    text = t.purpose + " · " + t.model + " · " + fmtMs(t.duration_ms) + " · " + t.input_tokens + "→" + t.output_tokens + " tok";
+    if (t.errors.length) text += " · " + t.attempts + " requests, failed: " + t.errors.join(", ");
+  } else if (t.type === "tool") {
+    text = t.name + " · " + (t.status === "staged" ? "saved for approval, not run"
+      : t.status + " · " + fmtMs(t.duration_ms) + (t.attempts > 1 ? " · " + t.attempts + " attempts" : ""));
+  } else {
+    text = t.action + " → " + t.answer + " (decided by " + t.decided_by.replace("_", " ") + ")";
+  }
+  li.append(" " + text);
+  return li;
+}
+
+// Markdown in replies: paragraphs, lists, headings, tables, **bold** and `code`. Every piece of
+// text becomes a text node, so ticket content can never inject HTML.
+function md(text) {
+  const root = el("div", "md");
+  let para = [], list = null, table = null;
+  const endPara = () => { if (para.length) root.append(inline(el("p"), para.join("\n"))); para = []; };
+  const endBlocks = () => { endPara(); list = null; table = null; };
+  for (const line of text.split("\n")) {
+    const item = line.match(/^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/);
+    const heading = line.match(/^#{1,4}\s+(.*)$/);
+    if (!line.trim()) endBlocks();
+    else if (/^\s*\|.*\|\s*$/.test(line)) {
+      endPara(); list = null;
+      if (/^[\s|:-]+$/.test(line)) continue; // the |---| row under the header
+      if (!table) { table = el("table"); root.append(table); }
+      const row = el("tr");
+      line.trim().slice(1, -1).split("|").forEach((cell) => row.append(inline(el(table.rows.length ? "td" : "th"), cell.trim())));
+      table.append(row);
+    } else if (item) {
+      endPara(); table = null;
+      const tag = item[1] ? "ol" : "ul";
+      if (!list || list.tagName.toLowerCase() !== tag) { list = el(tag); root.append(list); }
+      list.append(inline(el("li"), item[2]));
+    } else if (heading) { endBlocks(); root.append(inline(el("p", "h"), heading[1])); }
+    else { list = null; table = null; para.push(line); }
+  }
+  endBlocks();
+  return root;
+}
+
+function inline(node, text) {
+  for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
+    if (/^\*\*[^*]+\*\*$/.test(part)) node.append(el("strong", "", part.slice(2, -2)));
+    else if (/^`[^`]+`$/.test(part)) node.append(el("code", "", part.slice(1, -1)));
+    else if (part) node.append(part); // a string becomes a text node
+  }
+  return node;
+}
+
+function renderApproval(p) {
+  const box = el("div", "approval");
+  box.setAttribute("role", "group");
+  box.setAttribute("aria-label", "Approval request");
+  box.append(el("strong", "", "Approval request: " + p.action));
+  box.append(el("pre", "mono", JSON.stringify(p.input, null, 2)));
+  const yes = el("button", "primary", "Accept"), no = el("button", "", "Decline");
+  yes.type = no.type = "button";
+  yes.addEventListener("click", () => decide(box, "accept"));
+  no.addEventListener("click", () => decide(box, "decline"));
+  box.append(yes, " ", no);
+  return box;
+}
+
+// A button sends a decision, not a typed message: nothing appears in the chat as if typed.
+// The card says "Accepted" only once the server has answered; after an error it can be used again.
+async function decide(box, approval) {
+  const ok = await send({ approval });
+  if (ok) box.append(el("div", "decided", approval === "accept" ? "✓ Accepted" : "✗ Declined"));
+  else box.querySelectorAll("button").forEach((b) => (b.disabled = false));
+}
+
+function renderTurn(data, requestId, ms) {
+  const msg = el("div", "msg");
+  msg.append(md(data.output || "(no text)"));
+  if (data.tool_calls.length) msg.append(renderToolCalls(data.tool_calls));
+  if (data.pending_approval) msg.append(renderApproval(data.pending_approval));
+  const llm = data.trace.filter((t) => t.type === "llm");
+  const answeredBy = el("span", "", "answered by ");
+  answeredBy.append(el("b", "mono", [...new Set(llm.map((t) => t.model))].join(", ") || "—"));
+  const req = el("span", "mono", "req " + requestId.slice(0, 8));
+  req.title = requestId;
+  const meta = el("div", "meta");
+  meta.append(answeredBy, el("span", "", fmtMs(ms)), el("span", "", llm.length + " LLM call" + (llm.length === 1 ? "" : "s")),
+    el("span", "", data.usage.input_tokens + " → " + data.usage.output_tokens + " tokens"), req);
+  msg.append(meta);
+  if (data.trace.length) {
+    const d = el("details", "trace");
+    d.append(el("summary", "", "trace (" + data.trace.length + " steps)"));
+    const ul = el("ul", "tl");
+    data.trace.forEach((t) => ul.append(renderTraceEvent(t)));
+    d.append(ul);
+    msg.append(d);
+  }
+  return msg;
+}
+
+// body is { prompt } for a typed message, or { approval } from a card's button.
+async function send(body) {
+  // Only the latest approval card can be answered.
+  document.querySelectorAll(".approval button").forEach((b) => (b.disabled = true));
+  if (body.prompt) $("log").append(el("div", "msg user", body.prompt));
+  $("send").disabled = true;
+  const started = performance.now();
+  try {
+    const res = await fetch("/invocations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", [SESSION_HEADER]: sessionId },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    const requestId = res.headers.get("X-Request-Id") || data.request_id || "?";
+    const ms = Math.round(performance.now() - started);
+    if (!res.ok) throw new Error("HTTP " + res.status + ": " + (data.message || JSON.stringify(data.detail || data)) + " (request " + requestId + ")");
+    $("log").append(renderTurn(data, requestId, ms));
+    account(data, ms);
+    return true;
+  } catch (err) {
+    stats.failed++;
+    renderStats();
+    $("log").append(el("div", "msg error", "Error after " + fmtMs(Math.round(performance.now() - started)) + ": " + err.message));
+    return false;
+  } finally {
+    $("send").disabled = false;
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+}
+
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = $("prompt").value.trim();
+  if (!p) return;
+  $("prompt").value = "";
+  send({ prompt: p });
+});
+$("reset").addEventListener("click", newSession);
+newSession();
+refreshInfo();
+setInterval(refreshInfo, 15000);
+</script>
+</body>
+</html>

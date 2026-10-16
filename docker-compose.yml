@@ -1,0 +1,24 @@
+services:
+  ticketing:
+    build: ./mock-ticketing
+    ports:
+      - "8000:8000"
+    environment:
+      # One variable sets both sides: the key the mock expects and the key the agent sends.
+      API_KEY: ${TICKETING_API_KEY:-dev-key-123}
+      FLAKY: ${FLAKY:-0}          # set to 1 to inject 429/500 failures
+      FLAKY_RATE: ${FLAKY_RATE:-0.3}
+      LATENCY_MS: ${LATENCY_MS:-0}
+
+  agent:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env  # the model choice and the keys; every other setting is in agent.toml
+    environment:
+      TICKETING__URL: http://ticketing:8000  # overrides agent.toml: the mock, by its service name
+      TICKETING_API_KEY: ${TICKETING_API_KEY:-dev-key-123}
+    volumes:
+      - ./agent.toml:/app/agent.toml:ro  # edit agent.toml, then restart: no rebuild
+    depends_on:
+      - ticketing

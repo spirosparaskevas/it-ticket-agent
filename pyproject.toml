@@ -1,0 +1,44 @@
+[project]
+name = "ticket-agent"
+version = "0.1.0"
+description = "IT support ticket agent for Amazon Bedrock AgentCore Runtime"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.142,<1",
+    "httpx>=0.28.1,<0.29",
+    "langgraph>=1.2.14,<2",
+    "mcp>=2.3,<3",
+    "openai>=3,<4",
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.15,<3",
+    "structlog>=26.1,<27",
+]
+
+[build-system]
+requires = ["uv_build>=0.7.19,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+required-version = ">=0.6.0"  # oldest uv tested to sync and pass the tests
+exclude-newer = "2026-10-08T00:00:00Z"  # no release newer than this (a 7-day cooldown, frozen)
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["mock-ticketing"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
